@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>XIF Decoded</title>
+    <style>
+        #canvasWrapper { position: relative; display: inline-block; }
+        .text-label {
+            position: absolute; font-weight: bold; color: yellow;
+        }
+    </style>
+</head>
+<body>
+<h1>Decoded XIF</h1>
+<div id="canvasWrapper">
+    <img src="{{ image_path }}" id="decodedImg">
+    {% for layer in text_layers %}
+    <div class="text-label" style="left:{{layer.x}}px; top:{{layer.y}}px; font-size:{{layer.font_size}}px; color:{{layer.color}}">
+        {{ layer.text }}
+    </div>
+    {% endfor %}
+</div>
+<a href="/">Back</a>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>XIF Web Prototype</title>
+    <style>
+        #canvasWrapper { position: relative; display: inline-block; }
+        .text-label {
+            position: absolute; font-weight: bold; color: yellow; cursor: move;
+        }
+    </style>
+</head>
+<body>
+<h1>XIF Editor / Viewer</h1>
+
+<!-- CREATE XIF -->
+<h2>Create XIF</h2>
+<input type="file" id="imageInput"><br><br>
+<input type="text" id="labelInput" placeholder="Enter label">
+<button id="addLabelBtn">Add Label</button>
+<button id="downloadBtn">Download XIF</button>
+<button id="clearBtn">Clear Labels</button>
+<div id="canvasWrapper">
+    <img id="imageDisplay" src="">
+</div>
+<form id="xifForm" action="/create_xif" method="POST" style="display:none;" enctype="multipart/form-data">
+    <input type="file" name="image" id="hiddenImage">
+    <input type="hidden" name="layers" id="hiddenLayers">
+</form>
+
+<hr>
+
+<!-- DECODE XIF -->
+<h2>Decode XIF</h2>
+<form id="decodeForm" action="/decode" method="POST" enctype="multipart/form-data">
+    <input type="file" name="xif_file" required>
+    <button type="submit">Decode XIF</button>
+</form>
+
+<script>
+    const imageDisplay = document.getElementById("imageDisplay");
+    const wrapper = document.getElementById("canvasWrapper");
+    const textLayers = [];
+
+    document.getElementById("imageInput").onchange = function(e){
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(evt){
+            imageDisplay.src = evt.target.result;
+        }
+        reader.readAsDataURL(file);
+    };
+
+    function makeDraggable(div){
+        div.onmousedown = function(e){
+            const offsetX = e.clientX - div.offsetLeft;
+            const offsetY = e.clientY - div.offsetTop;
+            function move(e){
+                div.style.left = (e.clientX - offsetX) + "px";
+                div.style.top = (e.clientY - offsetY) + "px";
+            }
+            document.addEventListener("mousemove", move);
+            document.onmouseup = function(){
+                document.removeEventListener("mousemove", move);
+                document.onmouseup = null;
+            }
+        }
+    }
+
+    document.getElementById("addLabelBtn").onclick = function(){
+        const text = document.getElementById("labelInput").value;
+        if(!text || !imageDisplay.src) return alert("Upload image and enter text");
+        const div = document.createElement("div");
+        div.className = "text-label";
+        div.innerText = text;
+        div.style.left = "10px";
+        div.style.top = "10px";
+        wrapper.appendChild(div);
+        makeDraggable(div);
+        textLayers.push({text, x:10, y:10, color:"yellow", font_size:20, element:div});
+        document.getElementById("labelInput").value = "";
+    };
+
+    document.getElementById("clearBtn").onclick = function(){
+        textLayers.forEach(l => wrapper.removeChild(l.element));
+        textLayers.length = 0;
+    };
+
+    document.getElementById("downloadBtn").onclick = function(){
+        if(!imageDisplay.src) return alert("Upload an image first!");
+        const layersData = textLayers.map(l => ({
+            text: l.text,
+            x: l.element.offsetLeft,
+            y: l.element.offsetTop,
+            color: l.color,
+            font_size: l.font_size
+        }));
+        const form = document.getElementById("xifForm");
+        const hiddenImage = document.getElementById("hiddenImage");
+        const hiddenLayers = document.getElementById("hiddenLayers");
+
+        fetch(imageDisplay.src).then(res => res.blob()).then(blob => {
+            const dt = new DataTransfer();
+            dt.items.add(new File([blob], "image.png"));
+            hiddenImage.files = dt.files;
+            hiddenLayers.value = JSON.stringify(layersData);
+            form.submit();
+        });
+    };
+</script>
+</body>
+</html>
